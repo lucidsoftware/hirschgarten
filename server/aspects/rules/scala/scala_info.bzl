@@ -50,28 +50,37 @@ def extract_scalatest_classpath(rule_attr):
 
 def extract_scala_info(target, ctx, output_groups, **kwargs):
     kind = ctx.rule.kind
+
     if not kind.startswith("scala_") and not kind.startswith("thrift_"):
         return None, None
 
-    SCALA_TOOLCHAIN = "@io_bazel_rules_scala//scala:toolchain_type"
-
     scala_info = {}
 
-    rule_attr = ctx.rule.attr
+    if hasattr(ctx.rule.attr, "scala"):
+        scala_configuration = ctx.rule.attr.scala.scala_configuration
+        common_scalac_options = scala_configuration.global_scalacopts
 
-    # check of _scala_toolchain is necessary, because SCALA_TOOLCHAIN will always be present
-    if hasattr(rule_attr, "_scala_toolchain"):
-        common_scalac_opts = ctx.toolchains[SCALA_TOOLCHAIN].scalacopts
-        if hasattr(rule_attr, "_scalac"):
-            scalac = rule_attr._scalac
-            compiler_classpath = find_scalac_classpath(scalac.default_runfiles.files.to_list())
-            if compiler_classpath:
-                scala_info["compiler_classpath"] = map(file_location, compiler_classpath)
-                if is_external(scalac):
-                    update_sync_output_groups(output_groups, "external-deps-resolve", depset(compiler_classpath))
+        classpath_files = []
+
+        for target in scala_configuration.compiler_classpath:
+            for file in target[JavaInfo].runtime_output_jars:
+                classpath_files.append(file)
+
+        compiler_classpath = find_scalac_classpath(classpath_files)
+
+        if len(compiler_classpath) > 0:
+            scala_info["compiler_classpath"] = map(file_location, compiler_classpath)
+
+            if any([is_external(target) for target in scala_configuration.compiler_classpath]):
+                update_sync_output_groups(
+                    output_groups,
+                    "external-deps-resolve",
+                    depset(compiler_classpath)
+                )
     else:
-        common_scalac_opts = []
-    scala_info["scalac_opts"] = common_scalac_opts + getattr(ctx.rule.attr, "scalacopts", [])
+        common_scalac_options = []
+
+    scala_info["scalac_opts"] = common_scalac_options + getattr(ctx.rule.attr, "scalacopts", [])
 
     scala_info["scalatest_classpath"] = extract_scalatest_classpath(rule_attr)
 

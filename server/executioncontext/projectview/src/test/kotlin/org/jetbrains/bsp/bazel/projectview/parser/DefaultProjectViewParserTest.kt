@@ -533,7 +533,7 @@ class DefaultProjectViewParserTest {
           directories = null,
           deriveTargetsFromDirectories = null,
           importDepth = null,
-          enabledRules = ProjectViewEnabledRulesSection(listOf("io_bazel_rules_scala", "rules_jvm", "rules_java")),
+          enabledRules = ProjectViewEnabledRulesSection(listOf("rules_scala_annex", "rules_jvm", "rules_java")),
           ideJavaHomeOverride = null,
         )
 
