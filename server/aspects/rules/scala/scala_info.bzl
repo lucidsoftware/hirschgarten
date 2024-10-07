@@ -1,4 +1,5 @@
 load("//aspects:utils/utils.bzl", "file_location", "is_external", "map", "update_sync_output_groups")
+load("@rules_scala_annex//rules:providers.bzl", "ScalaConfiguration")
 
 def find_scalac_classpath(runfiles):
     result = []
@@ -21,7 +22,7 @@ def extract_scala_info(target, ctx, output_groups, **kwargs):
     scala_info = {}
 
     if hasattr(ctx.rule.attr, "scala"):
-        scala_configuration = ctx.rule.attr.scala.scala_configuration
+        scala_configuration = ctx.rule.attr.scala[ScalaConfiguration]
         common_scalac_options = scala_configuration.global_scalacopts
 
         classpath_files = []

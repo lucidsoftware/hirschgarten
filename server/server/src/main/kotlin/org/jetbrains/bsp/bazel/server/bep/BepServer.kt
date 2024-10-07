@@ -17,6 +17,7 @@ import com.google.devtools.build.v1.PublishBuildToolEventStreamRequest
 import com.google.devtools.build.v1.PublishBuildToolEventStreamResponse
 import com.google.devtools.build.v1.PublishLifecycleEventRequest
 import com.google.protobuf.Empty
+import com.google.protobuf.ByteString
 import io.grpc.stub.StreamObserver
 import org.apache.logging.log4j.LogManager
 import org.apache.logging.log4j.Logger
@@ -35,6 +36,7 @@ import java.net.URI
 import java.nio.file.FileSystemNotFoundException
 import java.nio.file.Files
 import java.nio.file.Paths
+//import kotlin.io.path.Path
 import java.util.UUID
 
 class BepServer(
@@ -251,11 +253,12 @@ class BepServer(
     when (event.stderr.fileCase) {
       BuildEventStreamProtos.File.FileCase.URI -> {
         try {
-          val path = Paths.get(URI.create(event.stderr.uri))
+          val uri = URI.create(event.stderr.uri)
+          val path = Paths.get(uri)
           val stdErrText = Files.readString(path)
           processDiagnosticText(stdErrText, label)
         } catch (e: FileSystemNotFoundException) {
-          LOGGER.warn(e)
+          LOGGER.warn("Error processing diagnostic text:", e)
         } catch (e: IOException) {
           LOGGER.warn(e)
         }
