@@ -586,7 +586,9 @@ object BazelBspSampleRepoTest : BazelBspTestBaseScenario() {
     val targetWithDependencyJavaBinary =
       DependencySourcesItem(
         BuildTargetIdentifier("$targetPrefix//target_with_dependency:java_binary"),
-        emptyList(),
+        listOf(
+          "file://\$BAZEL_OUTPUT_BASE_PATH/external/guava/guava-28.0-jre-src.jar",
+        ),
       )
     val javaTargetsSubpackageJavaLibrary =
       DependencySourcesItem(
