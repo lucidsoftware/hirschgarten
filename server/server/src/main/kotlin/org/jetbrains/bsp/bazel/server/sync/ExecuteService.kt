@@ -10,8 +10,10 @@ import ch.epfl.scala.bsp4j.RunResult
 import ch.epfl.scala.bsp4j.StatusCode
 import ch.epfl.scala.bsp4j.TestParams
 import ch.epfl.scala.bsp4j.TestResult
+import ch.epfl.scala.bsp4j.TextDocumentIdentifier
 import com.google.gson.Gson
 import com.google.gson.JsonObject
+import kotlin.io.path.Path
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.runBlocking
@@ -31,6 +33,8 @@ import org.jetbrains.bsp.bazel.server.bsp.managers.BazelBspCompilationManager
 import org.jetbrains.bsp.bazel.server.bsp.managers.BepReader
 import org.jetbrains.bsp.bazel.server.diagnostics.DiagnosticsService
 import org.jetbrains.bsp.bazel.server.model.BspMappings
+import org.jetbrains.bsp.bazel.server.model.BspMappings.toBspId
+import org.jetbrains.bsp.bazel.server.model.Label
 import org.jetbrains.bsp.bazel.server.model.Module
 import org.jetbrains.bsp.bazel.server.model.Tag
 import org.jetbrains.bsp.bazel.server.paths.BazelPathsResolver
@@ -47,7 +51,6 @@ import org.jetbrains.bsp.protocol.MobileInstallResult
 import org.jetbrains.bsp.protocol.MobileInstallStartType
 import org.jetbrains.bsp.protocol.RunWithDebugParams
 import org.jetbrains.bsp.protocol.TestWithDebugParams
-import kotlin.io.path.Path
 
 class ExecuteService(
   private val compilationManager: BazelBspCompilationManager,
@@ -57,6 +60,7 @@ class ExecuteService(
   private val bspClientLogger: BspClientLogger,
   private val bazelPathsResolver: BazelPathsResolver,
   private val additionalBuildTargetsProvider: AdditionalAndroidBuildTargetsProvider,
+  private val hasAnyProblems: MutableMap<Label, Set<TextDocumentIdentifier>>,
 ) {
   private val gson = Gson()
 
@@ -65,7 +69,7 @@ class ExecuteService(
     target: BuildTargetIdentifier?,
     body: (BepReader) -> T,
   ): T {
-    val diagnosticsService = DiagnosticsService(compilationManager.workspaceRoot)
+    val diagnosticsService = DiagnosticsService(compilationManager.workspaceRoot, hasAnyProblems = hasAnyProblems)
     val server = BepServer(compilationManager.client, diagnosticsService, originId, target, bazelPathsResolver)
     val bepReader = BepReader(server)
 

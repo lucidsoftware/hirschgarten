@@ -1,9 +1,7 @@
 package org.jetbrains.bsp.bazel.server.diagnostics
 
 import ch.epfl.scala.bsp4j.DiagnosticSeverity
-import org.apache.logging.log4j.LogManager
 
-private val LOGGER = LogManager.getLogger("CompilerDiagnosticParser")
 
 object CompilerDiagnosticParser : Parser {
   override fun tryParse(output: Output): List<Diagnostic> = listOfNotNull(tryParseOne(output))
@@ -24,7 +22,6 @@ object CompilerDiagnosticParser : Parser {
       """.toRegex(RegexOption.COMMENTS)
 
   fun tryParseOne(output: Output): Diagnostic? {
-    LOGGER.info("Checking output:\n${output.peek()}")
      return output
       .tryTake(DiagnosticHeader)
       ?.let { match ->
@@ -34,7 +31,6 @@ object CompilerDiagnosticParser : Parser {
         val column = match.groups["columnNumber"]?.value?.toIntOrNull() ?: tryFindColumnNumber(messageLines) ?: 1
         val levelText = (match.groups["logLevel"]?.value ?: match.groups["errorLevel"]?.value ?: "").lowercase()
         val level = if (levelText == "warning") DiagnosticSeverity.WARNING else DiagnosticSeverity.ERROR
-        //val level = if (match.groupValues[5] == "warning") DiagnosticSeverity.WARNING else DiagnosticSeverity.ERROR
         val message = messageLines.joinToString("\n")
         Diagnostic(Position(line, column), message, path, output.targetLabel, level)
       }

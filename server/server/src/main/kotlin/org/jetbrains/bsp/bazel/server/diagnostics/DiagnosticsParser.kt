@@ -3,13 +3,13 @@ package org.jetbrains.bsp.bazel.server.diagnostics
 import org.jetbrains.bsp.bazel.server.model.Label
 
 interface DiagnosticsParser {
-  fun parse(bazelOutput: String, target: Label): List<Diagnostic>
+  fun parse(bazelOutput: String, target: Label, onlyKnownFiles: Boolean): List<Diagnostic>
 }
 
 class DiagnosticsParserImpl : DiagnosticsParser {
-  override fun parse(bazelOutput: String, target: Label): List<Diagnostic> {
+  override fun parse(bazelOutput: String, target: Label, onlyKnownFiles: Boolean): List<Diagnostic> {
     val output = prepareOutput(bazelOutput, target)
-    val diagnostics = collectDiagnostics(output)
+    val diagnostics = collectDiagnostics(output, onlyKnownFiles)
     return deduplicate(diagnostics)
   }
 
@@ -19,7 +19,7 @@ class DiagnosticsParserImpl : DiagnosticsParser {
     return Output(relevantLines, target)
   }
 
-  private fun collectDiagnostics(output: Output): List<Diagnostic> {
+  private fun collectDiagnostics(output: Output, onlyKnownFiles: Boolean): List<Diagnostic> {
     val diagnostics = mutableListOf<Diagnostic>()
     while (output.nonEmpty()) {
       for (parser in Parsers) {
@@ -31,7 +31,7 @@ class DiagnosticsParserImpl : DiagnosticsParser {
       }
     }
 
-    if (diagnostics.isEmpty()) {
+    if (diagnostics.isEmpty() && !onlyKnownFiles) {
       diagnostics.add(
         Diagnostic(
           position = Position(0, 0),

@@ -1,5 +1,6 @@
 package org.jetbrains.bsp.bazel.server
 
+import ch.epfl.scala.bsp4j.TextDocumentIdentifier
 import org.eclipse.lsp4j.jsonrpc.Launcher
 import org.jetbrains.bsp.bazel.bazelrunner.BazelInfoResolver
 import org.jetbrains.bsp.bazel.bazelrunner.BazelRunner
@@ -18,6 +19,7 @@ import org.jetbrains.bsp.bazel.server.bsp.managers.BazelBspCompilationManager
 import org.jetbrains.bsp.bazel.server.bsp.managers.BazelBspFallbackAspectsManager
 import org.jetbrains.bsp.bazel.server.bsp.managers.BazelBspLanguageExtensionsGenerator
 import org.jetbrains.bsp.bazel.server.bsp.utils.InternalAspectsResolver
+import org.jetbrains.bsp.bazel.server.model.Label
 import org.jetbrains.bsp.bazel.server.paths.BazelPathsResolver
 import org.jetbrains.bsp.bazel.server.sync.AdditionalAndroidBuildTargetsProvider
 import org.jetbrains.bsp.bazel.server.sync.BazelProjectMapper
@@ -44,6 +46,7 @@ import org.jetbrains.bsp.bazel.server.sync.languages.thrift.ThriftLanguagePlugin
 import org.jetbrains.bsp.bazel.workspacecontext.WorkspaceContextProvider
 import org.jetbrains.bsp.protocol.JoinedBuildClient
 import java.nio.file.Path
+import java.util.concurrent.ConcurrentHashMap
 
 class BazelBspServer(
   private val bspInfo: BspInfo,
@@ -51,6 +54,7 @@ class BazelBspServer(
   private val workspaceRoot: Path,
   private val telemetryConfig: TelemetryConfig,
 ) {
+  private val bspState: MutableMap<Label, Set<TextDocumentIdentifier>> = ConcurrentHashMap()
   private fun bspServerData(
     bspClientLogger: BspClientLogger,
     bazelRunner: BazelRunner,
@@ -92,6 +96,7 @@ class BazelBspServer(
         bspClientLogger = bspClientLogger,
         bazelPathsResolver = bazelPathsResolver,
         additionalBuildTargetsProvider = additionalBuildTargetsProvider,
+        hasAnyProblems = bspState
       )
     return BazelServices(
       projectSyncService,
@@ -185,7 +190,7 @@ class BazelBspServer(
         val bazelInfo = createBazelInfo(bazelRunner)
         val bazelPathsResolver = BazelPathsResolver(bazelInfo)
         val compilationManager =
-          BazelBspCompilationManager(bazelRunner, bazelPathsResolver, client, workspaceRoot)
+          BazelBspCompilationManager(bazelRunner, bazelPathsResolver, bspState, client, workspaceRoot)
         bspServerData(
           bspClientLogger,
           bazelRunner,
