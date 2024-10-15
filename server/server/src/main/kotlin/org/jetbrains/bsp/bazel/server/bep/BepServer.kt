@@ -3,6 +3,7 @@ package org.jetbrains.bsp.bazel.server.bep
 import ch.epfl.scala.bsp4j.BuildTargetIdentifier
 import ch.epfl.scala.bsp4j.CompileReport
 import ch.epfl.scala.bsp4j.CompileTask
+import ch.epfl.scala.bsp4j.PublishDiagnosticsParams
 import ch.epfl.scala.bsp4j.TaskFinishDataKind
 import ch.epfl.scala.bsp4j.TaskFinishParams
 import ch.epfl.scala.bsp4j.TaskId
@@ -36,6 +37,7 @@ import java.nio.file.FileSystemNotFoundException
 import java.nio.file.Files
 import java.nio.file.Paths
 import java.util.UUID
+import java.util.function.Consumer
 
 class BepServer(
   private val bspClient: JoinedBuildClient,
@@ -180,6 +182,9 @@ class BepServer(
 
   private fun processProgressEvent(event: BuildEventStreamProtos.BuildEvent) {
     if (event.hasProgress()) {
+      if (target != null) {
+        processDiagnosticText(event.progress.stderr, Label.parse(target.uri), true)
+      }
       // TODO https://youtrack.jetbrains.com/issue/BAZEL-622
       // bepLogger.onProgress(event.getProgress());
     }
@@ -253,7 +258,7 @@ class BepServer(
         try {
           val path = Paths.get(URI.create(event.stderr.uri))
           val stdErrText = Files.readString(path)
-          processDiagnosticText(stdErrText, label)
+          processDiagnosticText(stdErrText, label, false)
         } catch (e: FileSystemNotFoundException) {
           LOGGER.warn(e)
         } catch (e: IOException) {
@@ -262,20 +267,21 @@ class BepServer(
       }
 
       BuildEventStreamProtos.File.FileCase.CONTENTS -> {
-        processDiagnosticText(event.stderr.contents.toStringUtf8(), label)
+        processDiagnosticText(event.stderr.contents.toStringUtf8(), label, false)
       }
 
       else -> {}
     }
   }
 
-  private fun processDiagnosticText(stdErrText: String, targetLabel: Label) {
+  private fun processDiagnosticText(stdErrText: String, targetLabel: Label, diagnosticsFromProgress: Boolean) {
     if (stdErrText.isNotEmpty()) {
       val events =
         diagnosticsService.extractDiagnostics(
           stdErrText,
           targetLabel,
           originId,
+          diagnosticsFromProgress,
         )
       events.forEach {
         bspClient.onBuildPublishDiagnostics(
@@ -297,6 +303,16 @@ class BepServer(
     val outputGroups = targetComplete.outputGroupList
     LOGGER.trace("Consuming target completed event {}", targetComplete)
     bepOutputBuilder.storeTargetOutputGroups(label, outputGroups)
+
+    val shouldClearDiagnostics = outputGroups.stream().anyMatch { group: BuildEventStreamProtos.OutputGroup -> group.name == "default" }
+    if (targetComplete.success && shouldClearDiagnostics) {
+      val events = diagnosticsService.clearFormerDiagnostics(label)
+      events.forEach {
+        bspClient.onBuildPublishDiagnostics(
+          it,
+        )
+      }
+    }
   }
 
   private fun processAbortedEvent(event: BuildEventStreamProtos.BuildEvent) {
