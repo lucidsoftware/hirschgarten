@@ -2,6 +2,7 @@ package org.jetbrains.bsp.bazel.server.diagnostics
 
 import ch.epfl.scala.bsp4j.DiagnosticSeverity
 
+
 object CompilerDiagnosticParser : Parser {
   override fun tryParse(output: Output): List<Diagnostic> = listOfNotNull(tryParseOne(output))
 
@@ -9,28 +10,31 @@ object CompilerDiagnosticParser : Parser {
   // server/DiagnosticsServiceTest.kt:12:18: error: type mismatch: inferred type is String but Int was expected
   private val DiagnosticHeader =
     """
-      ^                # start of line
-      ([^:]+)          # file path (1)
-      :(\d+)           # line number (2)
-      (?::(\d+))?      # optional column number (3)
-      :\               # ": " separator
-      ([a-zA-Z\ ]+):\  # level (4)
-      (.*)             # actual error message (5)
+      ^                       # start of line
+      (?<logLevel>\[.*\]\s*)? #optional
+      (?<filePath>[^:]+)      # file path (2)
+      :(?<lineNumber>\d+)     # line number (3)
+      (?::(?<columnNumber>\d+))?      # optional column number (4)
+      (?::\ )?                # ": " separator
+      (?:(?<errorLevel>[a-zA-Z\ ]+):\ )? # optional level (5) could have been at the beginning instead
+      (?<errorMessage>.*)             # actual error message (6)
       $                # end of line
       """.toRegex(RegexOption.COMMENTS)
 
-  fun tryParseOne(output: Output): Diagnostic? =
-    output
+  fun tryParseOne(output: Output): Diagnostic? {
+     return output
       .tryTake(DiagnosticHeader)
       ?.let { match ->
-        val path = match.groupValues[1]
-        val line = match.groupValues[2].toInt()
-        val messageLines = collectMessageLines(match.groupValues[5], output)
-        val column = match.groupValues[3].toIntOrNull() ?: tryFindColumnNumber(messageLines) ?: 1
-        val level = if (match.groupValues[4] == "warning") DiagnosticSeverity.WARNING else DiagnosticSeverity.ERROR
+        val path = match.groups["filePath"]?.value ?: ""
+        val line = match.groups["lineNumber"]?.value?.toIntOrNull() ?: -1
+        val messageLines = collectMessageLines(match.groups["errorMessage"]?.value ?: "", output)
+        val column = match.groups["columnNumber"]?.value?.toIntOrNull() ?: tryFindColumnNumber(messageLines) ?: 1
+        val levelText = (match.groups["logLevel"]?.value ?: match.groups["errorLevel"]?.value ?: "").lowercase()
+        val level = if (levelText == "warning") DiagnosticSeverity.WARNING else DiagnosticSeverity.ERROR
         val message = messageLines.joinToString("\n")
         Diagnostic(Position(line, column), message, path, output.targetLabel, level)
       }
+    }
 
   private fun collectMessageLines(header: String, output: Output): List<String> {
     val lines = mutableListOf<String>()
