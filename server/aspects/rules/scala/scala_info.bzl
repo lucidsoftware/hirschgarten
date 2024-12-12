@@ -57,32 +57,31 @@ def extract_scala_info(target, ctx, output_groups, **kwargs):
 
     scala_info = {}
 
-    if hasattr(ctx.rule.attr, "scala"):
-        scala_configuration = ctx.rule.attr.scala[ScalaConfiguration]
-        common_scalac_options = scala_configuration.global_scalacopts
+    rule_attr = ctx.rule.attr
 
-        classpath_files = []
+    SCALA_TOOLCHAIN = "@rules_scala_annex//rules/scala:toolchain_type"
 
-        for target in scala_configuration.compiler_classpath:
-            for file in target[JavaInfo].runtime_output_jars:
-                classpath_files.append(file)
+    scala_configuration = ctx.toolchains[SCALA_TOOLCHAIN].toolchain.scala_configuration
+    common_scalac_options = scala_configuration.global_scalacopts
 
-        compiler_classpath = find_scalac_classpath(classpath_files)
+    classpath_files = []
+    for target in scala_configuration.compiler_classpath:
+        for file in target[JavaInfo].runtime_output_jars:
+            classpath_files.append(file)
+    compiler_classpath = find_scalac_classpath(classpath_files)
 
-        if len(compiler_classpath) > 0:
-            scala_info["compiler_classpath"] = map(file_location, compiler_classpath)
+    if len(compiler_classpath) > 0:
+        scala_info["compiler_classpath"] = map(file_location, compiler_classpath)
 
-            if any([is_external(target) for target in scala_configuration.compiler_classpath]):
-                update_sync_output_groups(
-                    output_groups,
-                    "external-deps-resolve",
-                    depset(compiler_classpath)
-                )
-    else:
-        common_scalac_options = []
+        if any([is_external(target) for target in scala_configuration.compiler_classpath]):
+            update_sync_output_groups(
+                output_groups,
+                "external-deps-resolve",
+                depset(compiler_classpath)
+            )
 
     scala_info["scalac_opts"] = common_scalac_options + getattr(ctx.rule.attr, "scalacopts", [])
 
-    scala_info["scalatest_classpath"] = extract_scalatest_classpath(rule_attr)
+    scala_info["scalatest_classpath"] = extract_scalatest_classpath(ctx.rule.attr)
 
     return dict(scala_target_info = struct(**scala_info)), None

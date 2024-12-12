@@ -93,6 +93,7 @@ class BazelBspLanguageExtensionsGenerator(internalAspectsResolver: InternalAspec
           Language.Rust -> """"@${it.ruleName}//rust:toolchain_type""""
           Language.Android -> getAndroidToolchain()
           Language.Go -> """"@${it.ruleName}//go:toolchain""""
+          Language.Scala -> """"@rules_scala_annex//rules/scala:toolchain_type""""
           else -> null
         }
       }.joinToString(prefix = "TOOLCHAINS = [\n", postfix = "\n]", separator = ",\n ") { "\t$it" }
