@@ -74,7 +74,12 @@ class BazelBspAspectsManager(
       )
     val allowManualTargetsSyncFlags = if (shouldSyncManualFlags) listOf(buildManualTests()) else emptyList()
 
-    val flagsToUse = defaultFlags + allowManualTargetsSyncFlags
+    /*
+     * Explicitly specifying a list of output groups should prevent bazel from building the default output group, but it will still include the validations output group unless you specifically exclude it.
+     * If the validations output group depends on the results of other more costly actions, they can make this take a long time.
+     * https://bazel.build/extending/rules#validation_actions
+     */
+    val flagsToUse = defaultFlags + allowManualTargetsSyncFlags + listOf("--norun_validations")
 
     return bazelBspCompilationManager
       .buildTargetsWithBep(
