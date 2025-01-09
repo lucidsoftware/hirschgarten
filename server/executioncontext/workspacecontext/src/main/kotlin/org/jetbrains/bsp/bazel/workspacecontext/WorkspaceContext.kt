@@ -81,7 +81,7 @@ class WorkspaceContextConstructor(workspaceRoot: Path, private val dotBazelBspDi
   private val log = LogManager.getLogger(WorkspaceContextConstructor::class.java)
 
   override fun construct(projectView: ProjectView): WorkspaceContext {
-    log.info("Constructing workspace context for: {}.", projectView)
+    log.debug("Constructing workspace context for: {}.", projectView)
 
     return WorkspaceContext(
       targets = TargetsSpecExtractor.fromProjectView(projectView),

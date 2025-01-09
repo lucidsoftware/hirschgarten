@@ -130,7 +130,11 @@ class BazelRunner(
   ) {
     val envString = processEnv?.let { envToString(it) }
     val directoryString = directory?.let { "cd $it &&" }
-    val processArgsString = processArgs.joinToString("' '", "'", "'")
+    val processArgsString = if (processArgs.size > 50) {
+      processArgs.slice(0..49).joinToString("' '", "'", "'") + " (+${processArgs.size - 50} more args)"
+    } else {
+       processArgs.joinToString("' '", "'", "'")
+    }
     listOfNotNull("Invoking:", envString, directoryString, processArgsString)
       .joinToString(" ")
       .also { LOGGER.info(it) }
