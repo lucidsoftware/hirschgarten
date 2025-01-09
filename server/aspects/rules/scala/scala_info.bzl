@@ -61,7 +61,7 @@ def extract_scala_info(target, ctx, output_groups, **kwargs):
 
     SCALA_TOOLCHAIN = "@rules_scala_annex//rules/scala:toolchain_type"
 
-    scala_configuration = ctx.toolchains[SCALA_TOOLCHAIN].toolchain.scala_configuration
+    scala_configuration = ctx.toolchains[SCALA_TOOLCHAIN].scala_configuration
     common_scalac_options = scala_configuration.global_scalacopts
 
     classpath_files = []
