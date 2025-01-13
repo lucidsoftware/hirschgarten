@@ -40,6 +40,10 @@ class BazelBspCompilationManager(
           async(Dispatchers.Default) {
             bepReader.start()
           }
+        /*
+         * example:
+         * bazel build --tool_tag=bazelbsp:0.0.0 --aspects=@@bazelbsp_aspect//aspects:core.bzl%bsp_target_info_aspect ...
+         */
         val command =
           bazelRunner.buildBazelCommand {
             build {
